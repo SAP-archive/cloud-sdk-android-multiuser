@@ -216,7 +216,7 @@ For more information see [Storage Service](https://help.sap.com/doc/c2d571df7310
 ## Setting Up Current User and Shared Offline Stores
 The user's offline store can be set up with the appropriate customers now that their country is known. This can be done by adding a defining query to the `OfflineODataProvider` before it is opened to specify a filter on the customers.
 
-See [Setting Up an Application](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/odata/Offline_OData_Setting_Up_Application.html) and [Defining an Application Configuration File](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/1.0/en-US/docs/user-guide/odata/Defining_an_Application_Configuration_File_with_Defining_Request/index.html) for more information about defining queries and setting up the offline store.
+See [Setting Up an Application](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/odata/Offline_OData_Setting_Up_Application.html) and [Defining an Application Configuration File](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/odata/Offline_OData_Defining_Application_Configuration_File.html) for more information about defining queries and setting up the offline store.
 
 The following code snippet shows how the offline store is created with the selected country:
 
