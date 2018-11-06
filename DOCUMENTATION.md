@@ -7,7 +7,7 @@
 - [Updating the Current User Offline Store](#updating-the-current-user-offline-store)
 - [Data Synchronization](#data-synchronization)
 
-See also [README.md](readme.md)
+See also [README.md](README.md)
 
 
 ## User Registration
