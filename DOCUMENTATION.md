@@ -1,6 +1,7 @@
 # SAP Cloud Platform SDK for Android Multi-User Sample Documentation
 
 ## Table of Contents
+
 - [User Registration](#user-registration)
 - [Saving and Retrieving the Current User Settings](#saving-and-retrieving-the-current-user-settings)
 - [Setting Up Current User and Shared Offline Stores](#setting-up-current-user-and-shared-offline-stores)
@@ -11,6 +12,7 @@ See also [README.md](README.md)
 
 
 ## User Registration
+
 The user authentication of the app is handled using OAuth, which allows the user to input their credentials. The `WebViewProcessor` displays the authentication UI from the SAP Identity Provider if authentication is required.
 
 The following code snippet shows the relevant authentication code.
@@ -27,11 +29,13 @@ OAuth2Configuration oAuth2Configuration = new OAuth2Configuration.Builder(getApp
         .build();
 
 SAPOAuthTokenStore oauthTokenStore = SAPOAuthTokenStore.getInstance();
+
 try {
     settingsParameters = new SettingsParameters(serviceURL, appID, deviceID, "1.0");
 } catch (MalformedURLException e) {
     Log.d(myTag, "Error creating the settings parameters: " + e.getMessage());
 }
+
 OkHttpClient myOkHttpClient = new OkHttpClient.Builder()
         .addInterceptor(new AppHeadersInterceptor(appID, deviceID, "1.0"))
         .addInterceptor(new OAuth2Interceptor(new OAuth2WebViewProcessor(oAuth2Configuration), oauthTokenStore))
@@ -73,6 +77,7 @@ ClientProvider.get().newCall(request).enqueue(updateUICallback);
 For more information on the inner workings of OAuth, see [OAuth 2.0 Reference](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/foundation/authentication.html#oauth-20).
 
 ## Saving and Retrieving the Current User Settings
+
 When a user first logs in, they are asked to choose the country they are going to work from. This choice is then saved to the backend server using the [Storage Service](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/foundation/settings.html).
 
 ![Select country](images/select-country.png)
@@ -214,6 +219,7 @@ Instead of using the JSON Storage, the country could be derived from the user's 
 For more information see [Storage Service](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/foundation/settings.html).
 
 ## Setting Up Current User and Shared Offline Stores
+
 The user's offline store can be set up with the appropriate customers now that their country is known. This can be done by adding a defining query to the `OfflineODataProvider` before it is opened to specify a filter on the customers.
 
 See [Setting Up an Application](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/odata/Offline_OData_Setting_Up_Application.html) and [Defining an Application Configuration File](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/odata/Offline_OData_Defining_Application_Configuration_File.html) for more information about defining queries and setting up the offline store.
@@ -253,24 +259,31 @@ private void setUpCurrentUserDatabase() {
         ((TextView) findViewById(R.id.description)).setText("Opening " + currentUser + "'s Offline Store");
     });
     storageManager.getCurrentUserOfflineODataProvider().open(() -> {
-//      Log.d(myTag, "Current user offline store is open");
+        Log.d(myTag, "Current user offline store is open");
 //      toastAMessageFromBackground("Current user offline store opened");
 //      storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
 //      runOnUiThread(() -> {
-//          unRegisterMenuItem.setEnabled(true);
-//          logSharedDataMenuItem.setEnabled(true);
-//          changeCountryMenuItem.setEnabled(true);
+//          changeCountryMenuItem.setVisible(true);
+//          logSharedDataMenuItem.setVisible(true);
+//          changeCountryMenuItem.setVisible(true);
+//          syncMenuItem.setVisible(true);
+//          loginOrOutMenuItem.setEnabled(true);
+//          loginOrOutMenuItem.setTitle("Logout");
 //          initCustomerList();
 //      });
-
+        // Store every users' offline store
         runOnUiThread(() -> {
             ((TextView) findViewById(R.id.description)).setText("Downloading latest changes to " + currentUser + "'s Offline Store");
         });
         storageManager.getCurrentUserOfflineODataProvider().download(() -> {
             storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
             runOnUiThread(() -> {
-                logSharedDataMenuItem.setEnabled(true);
-                changeCountryMenuItem.setEnabled(true);
+                changeCountryMenuItem.setVisible(true);
+                logSharedDataMenuItem.setVisible(true);
+                changeCountryMenuItem.setVisible(true);
+                syncMenuItem.setVisible(true);
+                loginOrOutMenuItem.setEnabled(true);
+                loginOrOutMenuItem.setTitle("Logout");
                 initCustomerList();
             });
         }, (error) -> Log.d(myTag, "Current user offline store failed to download"));
@@ -315,7 +328,9 @@ private void setupSharedStore() {
         getCurrentUserID();
         storageManager.setSharedESPMContainer(new ESPMContainer(storageManager.getSharedOfflineODataProvider()));
         toastAMessageFromBackground("Shared Offline Store opened");
-    }, (error) -> Log.d(myTag, "Shared Offline Store failed to open"));
+    }, (error) -> {
+        checkError(error.toString());
+    });
 }
 ```
 
@@ -345,7 +360,7 @@ public void onSave(View view) {
 }
 ```
 
-For more information on the implementation above, see the sample app's `ChangeCustomerDetailActivity` class.
+For more information on the implementation above, see the sample app's `ChangeCustomerDetailActivity` class `onOptionsItemSelected` function.
 
 ![Before change](images/customer-pre-change.png)
 
@@ -355,7 +370,7 @@ For more information on the implementation above, see the sample app's `ChangeCu
 
 ## Data Synchronization
 
-Since changes are made locally, they need to be uploaded to the server to be available on other devices. This data syncing is done when the user logs out, and the application will only successfully log out the user when the sync is complete.
+Since changes are made locally, they need to be uploaded to the server to be available on other devices. This data syncing is done when the user logs out, and the application will only successfully log out the user when the sync is complete. The app also syncs when the user clicks the `Sync` button or attempts to change their country.
 
 More explanation regarding data syncing can be found at [Synchronizing Data](https://help.sap.com/doc/c2d571df73104f72b9f1b73e06c5609a/Latest/en-US/docs/user-guide/odata/Offline_OData_Synchronizing_Data.html).
 
@@ -367,8 +382,6 @@ storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
     Log.d(myTag, "Successfully uploaded any changes made to customer data.");
     toastAMessageFromBackground("Successfully synced all changed data.");
     ...
-    // Then, if the upload succeeds we log the user out
-    unRegisterLogic();
 }, error -> {
     // If the upload does not succeed, we do NOT log the user out
     Log.d(myTag, "Error while uploading the current user store: " + error.getMessage());
@@ -377,4 +390,3 @@ storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
 ```
 
 ![Logout](images/logout.png)
-

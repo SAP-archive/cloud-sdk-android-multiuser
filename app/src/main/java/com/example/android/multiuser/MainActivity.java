@@ -18,6 +18,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,6 +27,7 @@ import com.sap.cloud.android.odata.espmcontainer.Customer;
 import com.sap.cloud.android.odata.espmcontainer.ESPMContainer;
 import com.sap.cloud.android.odata.espmcontainer.ESPMContainerMetadata;
 import com.sap.cloud.android.odata.espmcontainer.Product;
+import com.sap.cloud.android.odata.espmcontainer.SalesOrderItem;
 import com.sap.cloud.mobile.foundation.authentication.OAuth2Configuration;
 import com.sap.cloud.mobile.foundation.authentication.OAuth2Interceptor;
 import com.sap.cloud.mobile.foundation.authentication.OAuth2WebViewProcessor;
@@ -38,6 +41,10 @@ import com.sap.cloud.mobile.foundation.settings.Settings;
 import com.sap.cloud.mobile.foundation.user.UserInfo;
 import com.sap.cloud.mobile.foundation.user.UserRoles;
 import com.sap.cloud.mobile.odata.DataQuery;
+import com.sap.cloud.mobile.odata.EntitySet;
+import com.sap.cloud.mobile.odata.EntityType;
+import com.sap.cloud.mobile.odata.EntityValue;
+import com.sap.cloud.mobile.odata.EntityValueList;
 import com.sap.cloud.mobile.odata.core.AndroidSystem;
 import com.sap.cloud.mobile.odata.offline.OfflineODataDefiningQuery;
 import com.sap.cloud.mobile.odata.offline.OfflineODataException;
@@ -70,21 +77,25 @@ import static com.example.android.multiuser.StorageManager.customersListToDispla
 
 public class MainActivity extends AppCompatActivity implements CustomerRecyclerViewAdapter.ItemClickListener {
 
-    public final static String OAUTH_REDIRECT_URL = "https://oauthasservices-i826567trial.hanatrial.ondemand.com";
-    private final static String OAUTH_CLIENT_ID = "64d11f5a-d0c5-4bca-9172-25fd579a2413";
-    private final static String AUTH_END_POINT = "https://oauthasservices-i826567trial.hanatrial.ondemand.com/oauth2/api/v1/authorize";
-    private final static String TOKEN_END_POINT = "https://oauthasservices-i826567trial.hanatrial.ondemand.com/oauth2/api/v1/token";
-    public final static String serviceURL = "https://hcpms-i826567trial.hanatrial.ondemand.com";
+    private final static String USER_NUMBER = "i500828";
+    private final static String OAUTH_CLIENT_ID = "c1ae10d7-1287-4b08-b00e-5199e6f5a93d";
+
+    public final static String OAUTH_REDIRECT_URL = "https://oauthasservices-" + USER_NUMBER + "trial.hanatrial.ondemand.com";
+    private final static String AUTH_END_POINT = "https://oauthasservices-" + USER_NUMBER + "trial.hanatrial.ondemand.com/oauth2/api/v1/authorize";
+    private final static String TOKEN_END_POINT = "https://oauthasservices-" + USER_NUMBER + "trial.hanatrial.ondemand.com/oauth2/api/v1/token";
+    public final static String serviceURL = "https://hcpms-" + USER_NUMBER + "trial.hanatrial.ondemand.com";
     public final static String appID = "com.sap.multiuser";
     public final static String connectionID = "com.sap.edm.sampleservice.v2";
     public static final String myTag = "myDebuggingTag";
 
     public static String currentUser;
+    public static String countryCode;
     public StorageManager storageManager = StorageManager.getInstance();
     private String deviceID;
     private LinearLayout loadingSpinnerParent;
-    private String countryCode;
     private SettingsParameters settingsParameters;
+    private MenuItem syncMenuItem;
+    private MenuItem loginOrOutMenuItem;
     private MenuItem logSharedDataMenuItem;
     private MenuItem changeCountryMenuItem;
     private TextView loginTextView;
@@ -185,6 +196,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             e.printStackTrace();
             Log.d(myTag, "Exception encountered setting up shared store: " + e.getMessage());
         }
+        Log.d(myTag, "Opening Shared Offline Store");
         runOnUiThread(() -> {
             ((TextView) findViewById(R.id.description)).setText("Opening Shared Offline Store");
         });
@@ -193,7 +205,43 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             getCurrentUserID();
             storageManager.setSharedESPMContainer(new ESPMContainer(storageManager.getSharedOfflineODataProvider()));
             toastAMessageFromBackground("Shared Offline Store opened");
-        }, (error) -> Log.d(myTag, "Shared Offline Store failed to open"));
+        }, (error) -> {
+            checkError(error.toString());
+        });
+    }
+
+    private void checkError(String error) {
+        if (error.contains("Unable to resolve host")) { // no wifi
+            Log.d(myTag, "Shared Offline Store failed to open. Check WiFi.");
+            runOnUiThread(() -> {
+                findViewById(R.id.loading_spinner).setVisibility(View.GONE);
+                ((TextView) findViewById(R.id.description)).setText("Failed to open Shared Offline Store. Make sure that you have Internet connection and restart the app.");
+            });
+        } else if (error.contains("HTTP status code: 503")) { // bad i number
+            Log.d(myTag, "Shared Offline Store failed to open. Check i-number in MainActivity.java file.");
+            runOnUiThread(() -> {
+                findViewById(R.id.loading_spinner).setVisibility(View.GONE);
+                ((TextView) findViewById(R.id.description)).setText("Failed to open Shared Offline Store. Make sure that you have the correct USER_NUMBER in MainActivity.java file.");
+            });
+        } else if (error.toString().contains("HTTP status code: 404")) {
+            Log.d(myTag, "Shared Offline Store failed to open. Check Cockpit for MultiUser project.");
+            runOnUiThread(() -> {
+                findViewById(R.id.loading_spinner).setVisibility(View.GONE);
+                ((TextView) findViewById(R.id.description)).setText("Failed to open Shared Offline Store. Make sure that the user has MultiUser project in Cockpit.");
+            });
+        } else if (error.contains("unauthorized_client")) {
+            Log.d(myTag, "Shared Offline Store failed to open. Check OAUTH_CLIENT_ID in MainActivity.java file.");
+            runOnUiThread(() -> {
+                findViewById(R.id.loading_spinner).setVisibility(View.GONE);
+                ((TextView) findViewById(R.id.description)).setText("Failed to open Shared Offline Store. Make sure that you have the correct OAUTH_CLIENT_ID in MainActivity.java file.");
+            });
+        } else {
+            Log.d(myTag, "Shared Offline Store failed to open. Error not caught: " + error.toString());
+            runOnUiThread(() -> {
+                findViewById(R.id.loading_spinner).setVisibility(View.GONE);
+                ((TextView) findViewById(R.id.description)).setText("Failed to open Shared Offline Store. Error: " + error.toString());
+            });
+        }
     }
 
     /**
@@ -236,11 +284,19 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
 
     public void onLogout() {
         Log.d(myTag, "In onLogout");
+        toastAMessageFromBackground("Syncing data, please hold.");
         // Upload changes on logout
         storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
             Log.d(myTag, "Successfully uploaded any changes made to customer data.");
             toastAMessageFromBackground("Successfully synced all changed data.");
             unRegisterLogic();
+            runOnUiThread(() -> {
+                loginOrOutMenuItem.setTitle("Login");
+                changeCountryMenuItem.setVisible(false);
+                logSharedDataMenuItem.setVisible(false);
+                changeCountryMenuItem.setVisible(false);
+                syncMenuItem.setVisible(false);
+            });
         }, (error) -> {
             Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
             android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
@@ -268,6 +324,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         runOnUiThread(() -> {
             loginTextView.setVisibility(View.GONE);
             loadingSpinnerParent.setVisibility(View.VISIBLE);
+            loginOrOutMenuItem.setEnabled(false);
         });
     }
 
@@ -280,7 +337,6 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         regionDialog.setTitle("Choose a Country");
         HashSet<String> countryIds = new HashSet<>();
         DataQuery customersQuery = new DataQuery().from(ESPMContainerMetadata.EntitySets.customers);
-        toastAMessageFromBackground("Retrieving available countries...");
         storageManager.getSharedESPMContainer().getCustomersAsync(customersQuery, customers -> {
             for (Customer customer : customers) {
                 countryIds.add(customer.getCountry());
@@ -288,16 +344,15 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             String[] types = countryIds.toArray(new String[countryIds.size()]);
             Arrays.sort(types);
             regionDialog.setItems(types, (DialogInterface dialog, int position) -> {
-//                if (countryCode != types[position]) {
-//                    try {
-//                        storageManager.getCurrentUserOfflineODataProvider().clear();
-//                    } catch (OfflineODataException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-                countryCode = types[position];
-                storeCountry(countryCode);
-                setUpCurrentUserDatabase();
+                if (countryCode != types[position]) {
+                    runOnUiThread(() -> {
+                        loadingSpinnerParent.setVisibility(View.VISIBLE);
+                        ((TextView) findViewById(R.id.description)).setText("Retrieving available countries");
+                    });
+                    countryCode = types[position];
+                    storeCountry(countryCode);
+                    setUpCurrentUserDatabase();
+                }
                 dialog.dismiss();
             });
 
@@ -407,7 +462,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                         storageManager.getCustomersListToDisplay().clear();
                         adapter.notifyDataSetChanged();
                         changeCountryMenuItem.setEnabled(false);
-                        logSharedDataMenuItem.setEnabled(false);
+//                        logSharedDataMenuItem.setEnabled(false);
                         loginTextView.setVisibility(View.VISIBLE);
                         currentUser = null;
                         getSupportActionBar().setTitle("Call Center");
@@ -456,26 +511,34 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             ((TextView) findViewById(R.id.description)).setText("Opening " + currentUser + "'s Offline Store");
         });
         storageManager.getCurrentUserOfflineODataProvider().open(() -> {
-//            Log.d(myTag, "Current user offline store is open");
+            Log.d(myTag, "Current user offline store is open");
 //            toastAMessageFromBackground("Current user offline store opened");
 //            storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
 //            runOnUiThread(() -> {
-//                unRegisterMenuItem.setEnabled(true);
-//                logSharedDataMenuItem.setEnabled(true);
-//                changeCountryMenuItem.setEnabled(true);
+//                changeCountryMenuItem.setVisible(true);
+//                logSharedDataMenuItem.setVisible(true);
+//                changeCountryMenuItem.setVisible(true);
+//                syncMenuItem.setVisible(true);
+//                loginOrOutMenuItem.setEnabled(true);
+//                loginOrOutMenuItem.setTitle("Logout");
 //                initCustomerList();
 //            });
-
+            // Store every users' offline store
             runOnUiThread(() -> {
                 ((TextView) findViewById(R.id.description)).setText("Downloading latest changes to " + currentUser + "'s Offline Store");
             });
             storageManager.getCurrentUserOfflineODataProvider().download(() -> {
                 storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
-                runOnUiThread(() -> {
-                    logSharedDataMenuItem.setEnabled(true);
-                    changeCountryMenuItem.setEnabled(true);
-                    initCustomerList();
-                });
+                if (currentUser != null)
+                    runOnUiThread(() -> {
+                        changeCountryMenuItem.setVisible(true);
+                        changeCountryMenuItem.setEnabled(true);
+                        logSharedDataMenuItem.setVisible(true);
+                        syncMenuItem.setVisible(true);
+                        loginOrOutMenuItem.setEnabled(true);
+                        loginOrOutMenuItem.setTitle("Logout");
+                        initCustomerList();
+                    });
             }, (error) -> Log.d(myTag, "Current user offline store failed to download"));
         }, (error) -> Log.d(myTag, "Current user offline store failed to open"));
     }
@@ -485,7 +548,9 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         // Adds options to the menu
         getMenuInflater().inflate(R.menu.main_activity_menu, menu);
         logSharedDataMenuItem = menu.findItem(R.id.action_query_shared);
+        loginOrOutMenuItem = menu.findItem(R.id.action_register);
         changeCountryMenuItem = menu.findItem(R.id.action_change_country);
+        syncMenuItem = menu.findItem(R.id.action_sync);
 
         if (firstOpen) {
             onRegister();
@@ -500,7 +565,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         int id = item.getItemId();
 
         // Do action based on menu item selected
-        if (id == R.id.action_login_or_out) { // Logout
+        if (id == R.id.action_register) { // Login/Logout
             if (currentUser == null) {
                 onRegister();
             } else {
@@ -508,13 +573,9 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             }
         } else if (id == R.id.action_change_country) { // Change Country
             if (currentUser != null) {
+                selectCustomerRegion();
                 storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
                     Log.d(myTag, "Successfully uploaded current user store.");
-                    runOnUiThread(() -> {
-                        loadingSpinnerParent.setVisibility(View.VISIBLE);
-                        ((TextView) findViewById(R.id.description)).setText("Retrieving available countries");
-                    });
-                    selectCustomerRegion();
                 }, (error) -> {
                     Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
                     android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
@@ -545,6 +606,38 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                 toastAMessageFromBackground("The shared store is not open.");
             }
             return true;
+        } else if (id == R.id.action_sync) { // Sync data
+            toastAMessageFromBackground("Uploading current user store.");
+            storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
+                Log.d(myTag, "Successfully uploaded current user store.");
+                toastAMessageFromBackground("Successfully uploaded store, downloading any changes...");
+                storageManager.getCurrentUserOfflineODataProvider().download(() -> {
+                    Log.d(myTag, "Successfully downloaded current user store.");
+                    toastAMessageFromBackground("Successfully downloaded store.");
+                    storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
+                    runOnUiThread(() -> {
+                        initCustomerList();
+                    });
+                }, (error) -> Log.d(myTag, "Current user offline store failed to download"));
+            }, (error) -> {
+                Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
+                android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
+                        .setMessage("Sync failed. The application was unable to upload its latest changes.")
+                        .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                onOptionsItemSelected(item);
+                            }
+                        })
+                        .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Log.d(myTag, "The Cancel button is clicked.");
+                            }
+                        });
+                runOnUiThread(() -> {
+                    alert.show();
+                });
+            });
         }
         return super.onOptionsItemSelected(item);
     }
@@ -594,7 +687,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                 loadingSpinnerParent.setVisibility(View.GONE);
                 loginTextView.setVisibility(View.GONE);
             }
-        }, (error) -> Log.d("myDebuggingTag", "Error getting customers: " + error.getMessage()));
+        }, (error) -> Log.d(myTag, "Error getting customers: " + error.getMessage()));
     }
 
     @Override

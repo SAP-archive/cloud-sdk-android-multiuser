@@ -1,9 +1,10 @@
 # SAP Cloud Platform SDK for Android Multi-User Sample
 
 ## Description
-This application demonstrates a multi-user scenario on a with a shared pool of devices.  The user can access and modify their data offline, where their changes are stored locally. These changes are synced to the backend when the user logs out, allowing the next user to use the device.  The application minimizes the risks of conflicts when merging the uploaded data since users have different subsets of data they are responsible for.
 
-An example use of this scenario is a call center where employees pick up a mobile device from a pool of available devices when they arrive at work each morning. Each employee is responsible for updating customer information from their assigned country, and they can only see and modify customers from their country. The sample application allows different employees to use the same device to access their assigned customer data. In other words, the application displays the appropriate information based on the current user regardless of which device they use. The next time they start a shift, they will likely have a different device, but will have the latest data changes after a download operation occurs.
+This application demonstrates a scenario where multiple users share a pool of devices.  The user can access and modify their data offline, where their changes are stored locally. These changes are synced to the backend when the user logs out, changes country, or use the sync button, allowing the user to use another device the next time they open the app.  The application minimizes the risks of conflicts when merging the uploaded data since users usually have different subsets of data they are responsible for.
+
+An example use of this scenario is a call center where employees pick up a mobile device from a pool of available devices when they arrive at work each morning. Each employee is responsible for updating customer information from their assigned country, and they can only see and modify customers from their country. The sample application allows different employees to use the same device to access their assigned customer data. In other words, the application displays the appropriate information based on the current user regardless of which device they use. The next time they start a shift, they will likely have a different device, but they will have the latest data changes after a download operation occurs.
 
 Another feature to note is that while the employees each have their own specific customer data, they can also have access to shared data (product data) that is common among all users.  This is referred to as the **shared store**.
 
@@ -16,13 +17,15 @@ The app enables customer info to be viewed and edited.
 Let's start setting up this project!
 
 ## Requirements
+
 * [Android Studio](https://developer.android.com/studio/index.html) version 3.2.1
-* [SAP Cloud Platform SDK for Android](https://www.sap.com/developer/trials-downloads/additional-downloads/sap-cloud-platform-sdk-for-android-15508.html) or [Software Downloads](https://launchpad.support.sap.com/#/softwarecenter/template/products/_APP=00200682500000001943&_EVENT=NEXT&HEADER=Y&FUNCTIONBAR=Y&EVENT=TREE&NE=NAVIGATE&ENR=73555000100800001281&V=MAINT&TA=ACTUAL/SAP%20CP%20SDK%20FOR%20AND) version 1.1.2 (1.0 SP0 PL02)
+* [SAP Cloud Platform SDK for Android from trial downloads](https://www.sap.com/developer/trials-downloads/additional-downloads/sap-cloud-platform-sdk-for-android-15508.html) or [SAP Cloud Platform SDK for Android from Software Downloads](https://launchpad.support.sap.com/#/softwarecenter/template/products/_APP=00200682500000001943&_EVENT=NEXT&HEADER=Y&FUNCTIONBAR=Y&EVENT=TREE&NE=NAVIGATE&ENR=73555000100800001281&V=MAINT&TA=ACTUAL/SAP%20CP%20SDK%20FOR%20AND) version 1.1.2 (1.0 SP00 PL02)
 * [SAP Cloud Platform](https://cloudplatform.sap.com/index.html)
 
 The blog [Step by Step with the SAP Cloud Platform SDK for Android](https://blogs.sap.com/2018/10/15/step-by-step-with-the-sap-cloud-platform-sdk-for-android-part-1/) contains additional details on how to setup and install the SDK, how to register for a trial version of the SAP Cloud Platform, and how to enable Mobile Services.  It is also a great place to start if you are new to the SAP Cloud Platform SDK for Android.
 
 ## Setting Up Mobile Services
+
 The initial mobile services configuration for the offline project is included in the project folder. In the mobile services cockpit, navigate to **Mobile Applications > Native/Hybrid** and click the **Import** button.
 
 ![Mobile Applications > Native/Hybrid > Import button](images/importing-project-config-mobile-services.png)
@@ -32,11 +35,12 @@ In the resulting prompt window, browse for the `mobile_services/com.sap.multiuse
 ![Browsing for mobile services configuration](images/browse-for-imported-ms-config.png)
 
 The imported project configuration will have an OAuth security endpoint that does not match your user name, so next, change the OAuth endpoint in the security section of the application to your own account. To do so, remove the current OAuth configuration in the **Security** section and create another one. Leave everything blank and click **OK**.
+
 ![Deleting old oauth configuration](images/deleting-old-oauth-config.png)
 
 ![Adding oauth client](images/add-oath-client.png)
 
-Click **Save**, and the rest of the details for the OAuth configuration such as **Authorization Endpoint**, **Token Endpoint**, **End User UI**, and **Redirect URL** will be filled in. 
+Click **Save**, and the rest of the details for the OAuth configuration such as **Authorization Endpoint**, **Token Endpoint**, **End User UI**, and **Redirect URL** will be filled in.
 
 ![Save the OAuth configuration](images/save-oauth-config.png)
 
@@ -44,15 +48,13 @@ Click **Save**, and the rest of the details for the OAuth configuration such as 
 
 Open the project in Android Studio.
 
-To successfully run the application, the OAuth string constants in the application need to be changed to reflect the new values. In the project, type `Ctrl + N` on Windows, or `Command + O` on Mac, and navigate to `MainActivity.java` and change the constants at the top of the file to match your username and client ID.
+To successfully run the application, the OAuth string constants in the application need to be changed to reflect the new values. In the project, press `Ctrl + N` on Windows, or `Command + O` on Mac, navigate to `MainActivity.java` and change the constants at the top of the file to match your username and client ID.
 
 ![Update the constants at the top of the MainActivity file](images/update-oauth-constants.png)
 
-
-Your username and `OAUTH_CLIENT_ID` string can be found in the mobile services cockpit, as shown below.
+Your `username` and `OAUTH_CLIENT_ID` string can be found in the mobile services cockpit, as shown below.
 
 ![The OAUTH_CLIENT_ID string located in the mobile services cockpit](images/oauth_client_id.png)
-
 
 Run the project to deploy it onto an emulator or device.  For further details on the app see [DOCUMENTATION.md](DOCUMENTATION.md).
 

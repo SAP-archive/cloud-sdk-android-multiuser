@@ -26,10 +26,11 @@ public class CustomerRecyclerViewAdapter extends BaseAdapter<Customer> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         Customer customer = mData.get(position);
-        holder.myObjectCell.prepareDetailImageView().setVisibility(View.GONE);
+//        holder.myObjectCell.prepareDetailImageView().setVisibility(View.GONE);
         holder.myObjectCell.setPreserveDetailImageSpacing(false);
         holder.myObjectCell.setBackgroundColor(Color.WHITE);
         holder.myObjectCell.setHeadline(customer.getLastName() + ", " + customer.getFirstName() );
         holder.myObjectCell.setSubheadline(customer.getStreet() + ", " + customer.getCity() + ", " + customer.getCountry());
+        holder.myObjectCell.setDetailImage(R.drawable.ic_account_circle_black_24dp);
     }
 }

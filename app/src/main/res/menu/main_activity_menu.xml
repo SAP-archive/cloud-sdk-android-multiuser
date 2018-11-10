@@ -3,19 +3,28 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_login_or_out"
-        android:title="Sync and Logout"
-        android:icon="@drawable/ic_action_logout"
-        app:showAsAction="always" />
+        android:id="@+id/action_sync"
+        android:title="Sync Database"
+        android:icon="@drawable/ic_sync"
+        app:showAsAction="always"
+        android:visible="false"/>
 
     <item
         android:id="@+id/action_change_country"
         android:title="Change Country"
-        android:icon="@drawable/ic_action_map"
-        app:showAsAction="always" />
+        android:icon="@drawable/ic_change_country"
+        app:showAsAction="always"
+        android:visible="false"/>
 
     <item
         android:id="@+id/action_query_shared"
         android:title="Log Shared Data"
+        app:showAsAction="never"
+        android:visible="false"/>
+
+    <item
+        android:id="@+id/action_register"
+        android:title="Login"
         app:showAsAction="never" />
+
 </menu>
