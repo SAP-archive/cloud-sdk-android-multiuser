@@ -8,6 +8,8 @@ An example use of this scenario is a call center where employees pick up a mobil
 
 Another feature to note is that while the employees each have their own specific customer data, they can also have access to shared data (product data) that is common among all users.  This is referred to as the **shared store**.
 
+If you are new to the SAP Cloud Platform SDK for Android, the [Step by Step with the SAP Cloud Platform SDK for Android](https://blogs.sap.com/2018/10/15/step-by-step-with-the-sap-cloud-platform-sdk-for-android-part-1/) series is a great place to start.
+
 ## The Finished Product
 
 The app enables customer info to be viewed and edited.
@@ -22,7 +24,7 @@ Let's start setting up this project!
 * [SAP Cloud Platform SDK for Android from trial downloads](https://www.sap.com/developer/trials-downloads/additional-downloads/sap-cloud-platform-sdk-for-android-15508.html) or [SAP Cloud Platform SDK for Android from Software Downloads](https://launchpad.support.sap.com/#/softwarecenter/template/products/_APP=00200682500000001943&_EVENT=NEXT&HEADER=Y&FUNCTIONBAR=Y&EVENT=TREE&NE=NAVIGATE&ENR=73555000100800001281&V=MAINT&TA=ACTUAL/SAP%20CP%20SDK%20FOR%20AND) version 1.1.2 (1.0 SP00 PL02)
 * [SAP Cloud Platform Trial](https://cloudplatform.sap.com/index.html)
 
-The blog [Step by Step with the SAP Cloud Platform SDK for Android](https://blogs.sap.com/2018/10/15/step-by-step-with-the-sap-cloud-platform-sdk-for-android-part-1/) contains additional details on how to setup and install the SDK, how to register for a trial version of the SAP Cloud Platform, and how to enable Mobile Services.  It is also a great place to start if you are new to the SAP Cloud Platform SDK for Android.
+The blog [Step by Step with the SAP Cloud Platform SDK for Android](https://blogs.sap.com/2018/10/15/step-by-step-with-the-sap-cloud-platform-sdk-for-android-part-1/) contains additional details on how to setup and install the SDK, how to register for a trial version of the SAP Cloud Platform, and how to enable Mobile Services.
 
 ## Setting Up Mobile Services
 
