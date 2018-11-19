@@ -1,5 +1,6 @@
 package com.example.android.multiuser;
 
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,13 +14,12 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,7 +27,6 @@ import com.sap.cloud.android.odata.espmcontainer.Customer;
 import com.sap.cloud.android.odata.espmcontainer.ESPMContainer;
 import com.sap.cloud.android.odata.espmcontainer.ESPMContainerMetadata;
 import com.sap.cloud.android.odata.espmcontainer.Product;
-import com.sap.cloud.android.odata.espmcontainer.SalesOrderItem;
 import com.sap.cloud.mobile.foundation.authentication.OAuth2Configuration;
 import com.sap.cloud.mobile.foundation.authentication.OAuth2Interceptor;
 import com.sap.cloud.mobile.foundation.authentication.OAuth2WebViewProcessor;
@@ -41,10 +40,6 @@ import com.sap.cloud.mobile.foundation.settings.Settings;
 import com.sap.cloud.mobile.foundation.user.UserInfo;
 import com.sap.cloud.mobile.foundation.user.UserRoles;
 import com.sap.cloud.mobile.odata.DataQuery;
-import com.sap.cloud.mobile.odata.EntitySet;
-import com.sap.cloud.mobile.odata.EntityType;
-import com.sap.cloud.mobile.odata.EntityValue;
-import com.sap.cloud.mobile.odata.EntityValueList;
 import com.sap.cloud.mobile.odata.core.AndroidSystem;
 import com.sap.cloud.mobile.odata.offline.OfflineODataDefiningQuery;
 import com.sap.cloud.mobile.odata.offline.OfflineODataException;
@@ -173,7 +168,6 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         });
     }
 
-
     /**
      * setupSharedStore populates offline stores (product and customer stores) from server
      */
@@ -202,12 +196,10 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         });
         storageManager.getSharedOfflineODataProvider().open(() -> {
             Log.d(myTag, "Shared Offline Store is open");
+            toastAMessageFromBackground("Shared Offline Store opened");
             getCurrentUserID();
             storageManager.setSharedESPMContainer(new ESPMContainer(storageManager.getSharedOfflineODataProvider()));
-            toastAMessageFromBackground("Shared Offline Store opened");
-        }, (error) -> {
-            checkError(error.toString());
-        });
+        }, (error) -> checkError(error.toString()));
     }
 
     private void checkError(String error) {
@@ -257,7 +249,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                     String countryFromStorageService = jsonObject.getString(currentUser);
                     Log.d(myTag, "Retrieved the country code from the storage service: " + countryFromStorageService);
                     countryCode = countryFromStorageService;
-                    setUpCurrentUserDatabase();
+                    setupCurrentUserOfflineStore();
                 } catch (JSONException e) {
                     e.printStackTrace();
                     Log.d(myTag, "Error while parsing JSON for country code: " + e.getMessage());
@@ -289,37 +281,38 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
             Log.d(myTag, "Successfully uploaded any changes made to customer data.");
             toastAMessageFromBackground("Successfully synced all changed data.");
-            unRegisterLogic();
+            logoutLogic();
             runOnUiThread(() -> {
                 loginOrOutMenuItem.setTitle("Login");
                 changeCountryMenuItem.setVisible(false);
                 logSharedDataMenuItem.setVisible(false);
-                changeCountryMenuItem.setVisible(false);
                 syncMenuItem.setVisible(false);
             });
         }, (error) -> {
             Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
             android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
                     .setMessage("Sync failed. The application was unable to upload its latest changes.")
+                    .setCancelable(false)
+                    .setOnKeyListener(new Dialog.OnKeyListener() {
+                        @Override
+                        public boolean onKey(DialogInterface arg0, int keyCode, KeyEvent event) {
+                            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                                finish();
+                            }
+                            return true;
+                        }
+                    })
                     .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
                             onLogout();
                         }
-                    })
-                    .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Log.d(myTag, "The Cancel button is clicked.");
-                        }
                     });
-            runOnUiThread(() -> {
-                alert.show();
-            });
+            runOnUiThread(() -> alert.show());
         });
     }
 
-    public void onRegister() {
-        Log.d(myTag, "In onRegister");
+    public void onLogin() {
+        Log.d(myTag, "In onLogin");
         setupSharedStore();
         runOnUiThread(() -> {
             loginTextView.setVisibility(View.GONE);
@@ -351,13 +344,17 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                     });
                     countryCode = types[position];
                     storeCountry(countryCode);
-                    setUpCurrentUserDatabase();
+                    setupCurrentUserOfflineStore();
                 }
                 dialog.dismiss();
             });
 
             regionDialog.setOnCancelListener((DialogInterface dialog) -> {
                 loadingSpinnerParent.setVisibility(View.GONE);
+                changeCountryMenuItem.setVisible(true);
+                loginOrOutMenuItem.setEnabled(true);
+                logSharedDataMenuItem.setVisible(true);
+                syncMenuItem.setVisible(true);
             });
 
             if (countryCode == null) {
@@ -367,7 +364,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             }
 
             regionDialog.show();
-        }, error -> Log.d(myTag, "Failed getting customers for their countries with error: " + error.getMessage()));
+        }, (error) -> Log.d(myTag, "Failed getting customers for their countries with error: " + error.getMessage()));
     }
 
     /**
@@ -420,8 +417,8 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         UserRoles.CallbackListener callbackListener = new UserRoles.CallbackListener() {
             @Override
             public void onSuccess(@NonNull UserInfo ui) {
-                toastAMessageFromBackground("Successfully registered");
-                Log.d(myTag, "Successfully registered");
+                toastAMessageFromBackground("Successfully logged in.");
+                Log.d(myTag, "Successfully logged in");
                 Log.d(myTag, "Logged in User Id: " + ui.getId());
                 currentUser = ui.getId();
                 getSupportActionBar().setTitle(currentUser);
@@ -430,16 +427,36 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
 
             @Override
             public void onError(@NonNull Throwable throwable) {
-                toastAMessageFromBackground("UserRoles onFailure " + throwable.getMessage());
+                Log.d(myTag, "Failed to register " + throwable.getMessage());
+                android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
+                        .setMessage("Failed to register user. Check your network connection and try again.")
+                        .setCancelable(false)
+                        .setOnKeyListener(new Dialog.OnKeyListener() {
+                            @Override
+                            public boolean onKey(DialogInterface arg0, int keyCode, KeyEvent event) {
+                                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                                    finish();
+                                }
+                                return true;
+                            }
+                        })
+                        .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                setupSharedStore();
+                            }
+                        });
+                runOnUiThread(() -> {
+                    alert.show();
+                });
             }
         };
         roles.load(callbackListener);
     }
 
     /**
-     * unRegisterLogic resets app to before user is authenticated
+     * logoutLogic resets app to before user is authenticated
      */
-    private void unRegisterLogic() {
+    private void logoutLogic() {
         CookieManager.getInstance().removeAllCookies(null);
 
         Request request = new Request.Builder()
@@ -461,8 +478,6 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                     runOnUiThread(() -> {
                         storageManager.getCustomersListToDisplay().clear();
                         adapter.notifyDataSetChanged();
-                        changeCountryMenuItem.setEnabled(false);
-//                        logSharedDataMenuItem.setEnabled(false);
                         loginTextView.setVisibility(View.VISIBLE);
                         currentUser = null;
                         getSupportActionBar().setTitle("Call Center");
@@ -480,7 +495,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
      * setUpCurrentUserDatabase retrieves any notifications directed to the user, downloads and
      * displays customers from the user's country
      */
-    private void setUpCurrentUserDatabase() {
+    private void setupCurrentUserOfflineStore() {
         try {
             URL url = new URL(serviceURL + "/" + connectionID);
             OfflineODataParameters offParam = new OfflineODataParameters();
@@ -489,10 +504,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             // Reset store
             if (storageManager.getCurrentUserOfflineODataProvider() != null) {
                 storageManager.getCurrentUserOfflineODataProvider().close();
-//                storageManager.getCurrentUserOfflineODataProvider().clear();
-//                storageManager.setCurrentUserOfflineODataProvider(null);
             }
-
             // Filter customers on country
             storageManager.setCurrentUserOfflineODataProvider(new OfflineODataProvider(url, offParam, ClientProvider.get(), null, null));
             String query = "Customers?$filter=Country eq '" + countryCode + "'";
@@ -503,44 +515,66 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             e.printStackTrace();
             Log.d(myTag, "Exception encountered setting up current user store: " + e.getMessage());
         }
-
         Log.d(myTag, "Current user offline store is now: " + storageManager.getCurrentUserOfflineODataProvider().getServiceName());
 
         // Retrieve and display customers to the user
-        runOnUiThread(() -> {
-            ((TextView) findViewById(R.id.description)).setText("Opening " + currentUser + "'s Offline Store");
-        });
+        runOnUiThread(() -> ((TextView) findViewById(R.id.description)).setText("Opening " + currentUser + "'s Offline Store"));
         storageManager.getCurrentUserOfflineODataProvider().open(() -> {
             Log.d(myTag, "Current user offline store is open");
-//            toastAMessageFromBackground("Current user offline store opened");
-//            storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
-//            runOnUiThread(() -> {
-//                changeCountryMenuItem.setVisible(true);
-//                logSharedDataMenuItem.setVisible(true);
-//                changeCountryMenuItem.setVisible(true);
-//                syncMenuItem.setVisible(true);
-//                loginOrOutMenuItem.setEnabled(true);
-//                loginOrOutMenuItem.setTitle("Logout");
-//                initCustomerList();
-//            });
             // Store every users' offline store
-            runOnUiThread(() -> {
-                ((TextView) findViewById(R.id.description)).setText("Downloading latest changes to " + currentUser + "'s Offline Store");
-            });
+            runOnUiThread(() -> ((TextView) findViewById(R.id.description)).setText("Downloading latest changes."));
             storageManager.getCurrentUserOfflineODataProvider().download(() -> {
                 storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
-                if (currentUser != null)
-                    runOnUiThread(() -> {
-                        changeCountryMenuItem.setVisible(true);
-                        changeCountryMenuItem.setEnabled(true);
-                        logSharedDataMenuItem.setVisible(true);
-                        syncMenuItem.setVisible(true);
-                        loginOrOutMenuItem.setEnabled(true);
-                        loginOrOutMenuItem.setTitle("Logout");
-                        initCustomerList();
+                if (currentUser != null) {
+                    runOnUiThread(() -> initCustomerList());
+                }
+            }, (error) -> {
+                Log.d(myTag, "Current user offline store failed to download");
+                android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
+                        .setMessage("Failed to download Current User's offline store. Ensure that you have working Internet connection and try again.")
+                        .setCancelable(false)
+                        .setOnKeyListener(new Dialog.OnKeyListener() {
+                            @Override
+                            public boolean onKey(DialogInterface arg0, int keyCode, KeyEvent event) {
+                                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                                    finish();
+                                }
+                                return true;
+                            }
+                        })
+                        .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                setupCurrentUserOfflineStore();
+                            }
+                        });
+                runOnUiThread(() -> {
+                    alert.show();
+                });
+            });
+        }, (error) -> {
+            Log.d(myTag, "Current user offline store failed to open");
+            android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
+                    .setMessage("Current user offline store failed to open. Ensure that you have working Internet connection and try again.")
+                    .setCancelable(false)
+                    .setOnKeyListener(new Dialog.OnKeyListener() {
+                        @Override
+                        public boolean onKey(DialogInterface arg0, int keyCode, KeyEvent event) {
+                            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                                finish();
+                            }
+                            return true;
+                        }
+                    })
+                    .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            setupCurrentUserOfflineStore();
+                        }
                     });
-            }, (error) -> Log.d(myTag, "Current user offline store failed to download"));
-        }, (error) -> Log.d(myTag, "Current user offline store failed to open"));
+
+            runOnUiThread(() -> {
+                alert.show();
+            });
+        });
     }
 
     @Override
@@ -553,7 +587,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         syncMenuItem = menu.findItem(R.id.action_sync);
 
         if (firstOpen) {
-            onRegister();
+            onLogin();
         } else if (storageManager.getCurrentUserOfflineODataProvider() != null) {
             initCustomerList();
         }
@@ -567,15 +601,23 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
         // Do action based on menu item selected
         if (id == R.id.action_register) { // Login/Logout
             if (currentUser == null) {
-                onRegister();
+                onLogin();
             } else {
                 onLogout();
             }
         } else if (id == R.id.action_change_country) { // Change Country
             if (currentUser != null) {
-                selectCustomerRegion();
+                runOnUiThread(() -> {
+                    loadingSpinnerParent.setVisibility(View.VISIBLE);
+                    ((TextView) findViewById(R.id.description)).setText("Syncing Changes.");
+                    changeCountryMenuItem.setVisible(false);
+                    logSharedDataMenuItem.setVisible(false);
+                    syncMenuItem.setVisible(false);
+                    loginOrOutMenuItem.setEnabled(false);
+                });
                 storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
                     Log.d(myTag, "Successfully uploaded current user store.");
+                    selectCustomerRegion();
                 }, (error) -> {
                     Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
                     android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
@@ -583,12 +625,6 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                             .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int which) {
                                     onOptionsItemSelected(item);
-                                }
-                            })
-                            .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    Log.d(myTag, "The Cancel button is clicked.");
                                 }
                             });
                     runOnUiThread(() -> {
@@ -623,17 +659,18 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                 Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
                 android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
                         .setMessage("Sync failed. The application was unable to upload its latest changes.")
-                        .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                onOptionsItemSelected(item);
+                        .setCancelable(false)
+                        .setOnKeyListener(new Dialog.OnKeyListener() {
+                            @Override
+                            public boolean onKey(DialogInterface arg0, int keyCode, KeyEvent event) {
+                                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                                    finish();
+                                }
+                                return true;
                             }
                         })
-                        .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                Log.d(myTag, "The Cancel button is clicked.");
-                            }
-                        });
+                        .setPositiveButton("Retry", (dialog, which) -> onOptionsItemSelected(item))
+                        .setNegativeButton("Cancel", (dialog, which) -> {});
                 runOnUiThread(() -> {
                     alert.show();
                 });
@@ -671,7 +708,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                     Log.d(myTag, "Current user offline store outdated. Downloading latest copy");
                     toastAMessageFromBackground("Current user offline store outdated. Downloading latest copy");
                     storageManager.getCurrentUserOfflineODataProvider().clear();
-                    setUpCurrentUserDatabase();
+                    setupCurrentUserOfflineStore();
                 } catch (OfflineODataException e) {
                     e.printStackTrace();
                 }
@@ -683,9 +720,15 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                     storageManager.getCustomersListToDisplay().add(customer);
                 }
                 adapter.notifyDataSetChanged();
-//                unRegisterMenuItem.setEnabled(true);
                 loadingSpinnerParent.setVisibility(View.GONE);
                 loginTextView.setVisibility(View.GONE);
+                runOnUiThread(() -> {
+                    changeCountryMenuItem.setVisible(true);
+                    logSharedDataMenuItem.setVisible(true);
+                    syncMenuItem.setVisible(true);
+                    loginOrOutMenuItem.setEnabled(true);
+                    loginOrOutMenuItem.setTitle("Logout");
+                });
             }
         }, (error) -> Log.d(myTag, "Error getting customers: " + error.getMessage()));
     }

@@ -10,7 +10,6 @@
 
 See also [README.md](README.md)
 
-
 ## User Registration
 
 The user authentication of the app is handled using OAuth, which allows the user to input their credentials. The `WebViewProcessor` displays the authentication UI from the SAP Identity Provider if authentication is required.
@@ -231,63 +230,36 @@ private void setUpCurrentUserDatabase() {
     try {
         URL url = new URL(serviceURL + "/" + connectionID);
         OfflineODataParameters offParam = new OfflineODataParameters();
-        offParam.setEnableRepeatableRequests(false);
         offParam.setStoreName(currentUser);
 
         // Reset store
         if (storageManager.getCurrentUserOfflineODataProvider() != null) {
             storageManager.getCurrentUserOfflineODataProvider().close();
-//          storageManager.getCurrentUserOfflineODataProvider().clear();
-//          storageManager.setCurrentUserOfflineODataProvider(null);
         }
 
         // Filter customers on country
         storageManager.setCurrentUserOfflineODataProvider(new OfflineODataProvider(url, offParam, ClientProvider.get(), null, null));
         String query = "Customers?$filter=Country eq '" + countryCode + "'";
-        Log.d(myTag, "The defining query is: " + query);
         OfflineODataDefiningQuery definingQuery = new OfflineODataDefiningQuery("CustomersInRegion", query, false);
         storageManager.getCurrentUserOfflineODataProvider().addDefiningQuery(definingQuery);
     } catch (Exception e) {
-        e.printStackTrace();
-        Log.d(myTag, "Exception encountered setting up current user store: " + e.getMessage());
+        ...
     }
 
-    Log.d(myTag, "Current user offline store is now: " + storageManager.getCurrentUserOfflineODataProvider().getServiceName());
-
     // Retrieve and display customers to the user
-    runOnUiThread(() -> {
-        ((TextView) findViewById(R.id.description)).setText("Opening " + currentUser + "'s Offline Store");
-    });
     storageManager.getCurrentUserOfflineODataProvider().open(() -> {
-        Log.d(myTag, "Current user offline store is open");
-//      toastAMessageFromBackground("Current user offline store opened");
-//      storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
-//      runOnUiThread(() -> {
-//          changeCountryMenuItem.setVisible(true);
-//          logSharedDataMenuItem.setVisible(true);
-//          changeCountryMenuItem.setVisible(true);
-//          syncMenuItem.setVisible(true);
-//          loginOrOutMenuItem.setEnabled(true);
-//          loginOrOutMenuItem.setTitle("Logout");
-//          initCustomerList();
-//      });
         // Store every users' offline store
-        runOnUiThread(() -> {
-            ((TextView) findViewById(R.id.description)).setText("Downloading latest changes to " + currentUser + "'s Offline Store");
-        });
         storageManager.getCurrentUserOfflineODataProvider().download(() -> {
             storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
-            runOnUiThread(() -> {
-                changeCountryMenuItem.setVisible(true);
-                logSharedDataMenuItem.setVisible(true);
-                changeCountryMenuItem.setVisible(true);
-                syncMenuItem.setVisible(true);
-                loginOrOutMenuItem.setEnabled(true);
-                loginOrOutMenuItem.setTitle("Logout");
-                initCustomerList();
-            });
-        }, (error) -> Log.d(myTag, "Current user offline store failed to download"));
-    }, (error) -> Log.d(myTag, "Current user offline store failed to open"));
+                if (currentUser != null)
+                    runOnUiThread(() -> {
+                        initCustomerList();
+                    });
+            }, (error) -> {
+                ...
+        }, (error) -> {
+            ...
+    });
 }
 ```
 
@@ -295,20 +267,53 @@ Each user has their own store and multiple users can use the same device.  The c
 
 The above implementation stores all of the users' offline stores locally, which makes the initial startup time significantly faster. Every time the user logs in, the application downloads the customers that were modified since the user's last session. A problem with this design choice is that there will always be offline stores that the current user doesn't use, as they belong to other users, thus trading space for performance.
 
-If we wanted to instead clear the offline stores every time a user logged in, remove the entire `storageManager.getCurrentUserOfflineODataProvider().download(...);` code and uncomment the commented code. The biggest difference between both design decisions is the tradeoff between space and runtime. Clearing the offline stores decrease the amount of space taken by the app while keeping the offline stores makes loading time faster.
+If we wanted to instead clear the offline stores every time a user logged in, replace the `setUpCurrentUserDatabase` function with the following code.
+
+```Java
+private void setUpCurrentUserDatabase() {
+    try {
+        URL url = new URL(serviceURL + "/" + connectionID);
+        OfflineODataParameters offParam = new OfflineODataParameters();
+        offParam.setStoreName(currentUser);
+
+        // Reset store
+        if (storageManager.getCurrentUserOfflineODataProvider() != null) {
+            storageManager.getCurrentUserOfflineODataProvider().close();
+            storageManager.getCurrentUserOfflineODataProvider().clear();
+            storageManager.setCurrentUserOfflineODataProvider(null);
+        }
+
+        // Filter customers on country
+        storageManager.setCurrentUserOfflineODataProvider(new OfflineODataProvider(url, offParam, ClientProvider.get(), null, null));
+        String query = "Customers?$filter=Country eq '" + countryCode + "'";
+        OfflineODataDefiningQuery definingQuery = new OfflineODataDefiningQuery("CustomersInRegion", query, false);
+        storageManager.getCurrentUserOfflineODataProvider().addDefiningQuery(definingQuery);
+    } catch (Exception e) {
+        ...
+    }
+
+    // Retrieve and display customers to the user
+    storageManager.getCurrentUserOfflineODataProvider().open(() -> {
+        storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
+        runOnUiThread(() -> {
+            initCustomerList();
+        });
+        }, (error) -> {
+            ...
+    });
+}
+```
+
+The biggest difference between both design decisions is the tradeoff between space and runtime. Clearing the offline stores decrease the amount of space taken by the app while keeping the offline stores makes loading time faster.
 
 In addition to a unique offline store for each user, the app needs to maintain a **shared** offline store that is accessible by all users. You can open such a store using the following method.
 
 ```Java
 private void setupSharedStore() {
-    Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.sap.cloud.mobile.odata");
-    logger.setLevel(Level.ALL);
     AndroidSystem.setContext(getApplicationContext());
-
     try {
         URL url = new URL(serviceURL + "/" + connectionID);
         OfflineODataParameters offParam = new OfflineODataParameters();
-        offParam.setEnableRepeatableRequests(false);
         offParam.setStoreName("sharedStore");
         storageManager.setSharedOfflineODataProvider(new OfflineODataProvider(url, offParam, ClientProvider.get(), null, null));
         OfflineODataDefiningQuery productsQuery = new OfflineODataDefiningQuery("Products", "Products", false);
@@ -317,19 +322,14 @@ private void setupSharedStore() {
         storageManager.getSharedOfflineODataProvider().addDefiningQuery(productsQuery);
         storageManager.getSharedOfflineODataProvider().addDefiningQuery(customersQuery);
     } catch (Exception e) {
-        e.printStackTrace();
-        Log.d(myTag, "Exception encountered setting up shared store: " + e.getMessage());
+        ...
     }
-    runOnUiThread(() -> {
-        ((TextView) findViewById(R.id.description)).setText("Opening Shared Offline Store");
-    });
+
     storageManager.getSharedOfflineODataProvider().open(() -> {
-        Log.d(myTag, "Shared Offline Store is open");
         getCurrentUserID();
         storageManager.setSharedESPMContainer(new ESPMContainer(storageManager.getSharedOfflineODataProvider()));
-        toastAMessageFromBackground("Shared Offline Store opened");
     }, (error) -> {
-        checkError(error.toString());
+        ...
     });
 }
 ```
@@ -344,7 +344,7 @@ In the customer detail page of the sample application, the user can modify the c
 
 The following code snippet shows the updating process in app level:
 
-```java
+```Java
 public void onSave(View view) {
     if (addressChanged) {
         customer.setStreet(etAddress.getText().toString());
@@ -379,14 +379,17 @@ The following code snippet shows the syncing process:
 ```Java
 // First we upload the current user's offline store
 storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
-    Log.d(myTag, "Successfully uploaded any changes made to customer data.");
-    toastAMessageFromBackground("Successfully synced all changed data.");
-    ...
+    // After uploading, we download any changes made by other people
+    storageManager.getCurrentUserOfflineODataProvider().download(() -> {
+            ...
+    }, error -> {
+            ...
+    });
 }, error -> {
-    // If the upload does not succeed, we do NOT log the user out
-    Log.d(myTag, "Error while uploading the current user store: " + error.getMessage());
-    ...
+        ...
 });
 ```
+
+Logging out is unique in the sense that there is no need to download the changes, since a download is made every time a user logs in.
 
 ![Logout](images/logout.png)

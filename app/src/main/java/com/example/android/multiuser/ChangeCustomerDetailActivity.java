@@ -19,6 +19,9 @@ import static com.example.android.multiuser.MainActivity.myTag;
 import static com.example.android.multiuser.StorageManager.adapter;
 
 public class ChangeCustomerDetailActivity extends AppCompatActivity {
+
+    public static final String TAG = "myDebuggingTag";
+
     EditText houseNumber;
     EditText street;
     EditText postalCode;
@@ -46,20 +49,16 @@ public class ChangeCustomerDetailActivity extends AppCompatActivity {
         setTitle("Edit Customer");
         setProfileHeader();
         storageManager = StorageManager.getInstance();
-
         street = findViewById(R.id.et_street);
         postalCode = findViewById(R.id.et_postal_code);
         phone = findViewById(R.id.et_phone);
         city = findViewById(R.id.et_city);
         houseNumber = findViewById(R.id.et_house_num);
-
         street.setText(customer.getStreet());
         phone.setText(customer.getPhoneNumber());
         postalCode.setText(customer.getPostalCode());
         city.setText(customer.getCity());
         houseNumber.setText(customer.getHouseNumber());
-
-
         street.addTextChangedListener(new TextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
@@ -76,7 +75,6 @@ public class ChangeCustomerDetailActivity extends AppCompatActivity {
                                       int before, int count) {
             }
         });
-
         postalCode.addTextChangedListener(new TextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
@@ -93,7 +91,6 @@ public class ChangeCustomerDetailActivity extends AppCompatActivity {
                                       int before, int count) {
             }
         });
-
         phone.addTextChangedListener(new TextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
@@ -110,7 +107,6 @@ public class ChangeCustomerDetailActivity extends AppCompatActivity {
                                       int before, int count) {
             }
         });
-
         city.addTextChangedListener(new TextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
@@ -127,7 +123,6 @@ public class ChangeCustomerDetailActivity extends AppCompatActivity {
                                       int before, int count) {
             }
         });
-
         houseNumber.addTextChangedListener(new TextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
@@ -189,13 +184,16 @@ public class ChangeCustomerDetailActivity extends AppCompatActivity {
 
                 if (streetChanged || cityChanged || phoneChanged || postalCodeChanged || houseNumChanged) {
                     storageManager.getCurrentUserESPMContainer().updateEntityAsync(customer, () ->
-                                    Log.d("myDebuggingTag", "Successfully updated customer info")
+                                    Log.d(TAG, "Successfully updated customer info")
                             , (error) ->
-                                    Log.d("myDebuggingTag", "Error updating customer: " + error.getMessage())
+                                    Log.d(TAG, "Error updating customer: " + error.getMessage())
                     );
                     Toast toast = Toast.makeText(this, "Successfully updated the customer.", Toast.LENGTH_LONG);
                     toast.show();
                     onBackPressed();
+                }
+                else {
+                    Toast.makeText(this, "No properties were changed.", Toast.LENGTH_LONG).show();
                 }
                 return true;
             default:
