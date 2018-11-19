@@ -284,6 +284,7 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             logoutLogic();
             runOnUiThread(() -> {
                 loginOrOutMenuItem.setTitle("Login");
+                loginOrOutMenuItem.setEnabled(true);
                 changeCountryMenuItem.setVisible(false);
                 logSharedDataMenuItem.setVisible(false);
                 syncMenuItem.setVisible(false);
@@ -600,6 +601,12 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
 
         // Do action based on menu item selected
         if (id == R.id.action_register) { // Login/Logout
+            runOnUiThread(() -> {
+                changeCountryMenuItem.setVisible(false);
+                logSharedDataMenuItem.setVisible(false);
+                syncMenuItem.setVisible(false);
+                loginOrOutMenuItem.setEnabled(false);
+            });
             if (currentUser == null) {
                 onLogin();
             } else {
@@ -622,10 +629,21 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                     Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
                     android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
                             .setMessage("Sync failed. The application was unable to upload its latest changes.")
+                            .setCancelable(false)
                             .setPositiveButton("Retry", new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int which) {
                                     onOptionsItemSelected(item);
                                 }
+                            })
+                            .setNegativeButton("Cancel", (dialog, which) -> {
+                                runOnUiThread(() -> {
+                                    loadingSpinnerParent.setVisibility(View.GONE);
+                                    changeCountryMenuItem.setVisible(true);
+                                    logSharedDataMenuItem.setVisible(true);
+                                    syncMenuItem.setVisible(true);
+                                    loginOrOutMenuItem.setEnabled(true);
+                                    initCustomerList();
+                                });
                             });
                     runOnUiThread(() -> {
                         alert.show();
@@ -643,6 +661,14 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
             }
             return true;
         } else if (id == R.id.action_sync) { // Sync data
+            runOnUiThread(() -> {
+                loadingSpinnerParent.setVisibility(View.VISIBLE);
+                ((TextView) findViewById(R.id.description)).setText("Syncing Changes.");
+                changeCountryMenuItem.setVisible(false);
+                logSharedDataMenuItem.setVisible(false);
+                syncMenuItem.setVisible(false);
+                loginOrOutMenuItem.setEnabled(false);
+            });
             toastAMessageFromBackground("Uploading current user store.");
             storageManager.getCurrentUserOfflineODataProvider().upload(() -> {
                 Log.d(myTag, "Successfully uploaded current user store.");
@@ -652,9 +678,42 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                     toastAMessageFromBackground("Successfully downloaded store.");
                     storageManager.setCurrentUserESPMContainer(new ESPMContainer(storageManager.getCurrentUserOfflineODataProvider()));
                     runOnUiThread(() -> {
+                        loadingSpinnerParent.setVisibility(View.GONE);
+                        changeCountryMenuItem.setVisible(true);
+                        logSharedDataMenuItem.setVisible(true);
+                        syncMenuItem.setVisible(true);
+                        loginOrOutMenuItem.setEnabled(true);
                         initCustomerList();
                     });
-                }, (error) -> Log.d(myTag, "Current user offline store failed to download"));
+                }, (error) -> {
+                    Log.d(myTag, "Current user offline store failed to download");
+                    android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
+                            .setMessage("Sync failed. The application was unable to upload its latest changes.")
+                            .setCancelable(false)
+                            .setOnKeyListener(new Dialog.OnKeyListener() {
+                                @Override
+                                public boolean onKey(DialogInterface arg0, int keyCode, KeyEvent event) {
+                                    if (keyCode == KeyEvent.KEYCODE_BACK) {
+                                        finish();
+                                    }
+                                    return true;
+                                }
+                            })
+                            .setPositiveButton("Retry", (dialog, which) -> onOptionsItemSelected(item))
+                            .setNegativeButton("Cancel", (dialog, which) -> {
+                                runOnUiThread(() -> {
+                                    loadingSpinnerParent.setVisibility(View.GONE);
+                                    changeCountryMenuItem.setVisible(true);
+                                    logSharedDataMenuItem.setVisible(true);
+                                    syncMenuItem.setVisible(true);
+                                    loginOrOutMenuItem.setEnabled(true);
+                                    initCustomerList();
+                                });
+                            });
+                    runOnUiThread(() -> {
+                        alert.show();
+                    });
+                });
             }, (error) -> {
                 Log.d(myTag, "Error while uploading current user store: " + error.getMessage());
                 android.app.AlertDialog.Builder alert = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar_MinWidth)
@@ -670,7 +729,16 @@ public class MainActivity extends AppCompatActivity implements CustomerRecyclerV
                             }
                         })
                         .setPositiveButton("Retry", (dialog, which) -> onOptionsItemSelected(item))
-                        .setNegativeButton("Cancel", (dialog, which) -> {});
+                        .setNegativeButton("Cancel", (dialog, which) -> {
+                            runOnUiThread(() -> {
+                                loadingSpinnerParent.setVisibility(View.GONE);
+                                changeCountryMenuItem.setVisible(true);
+                                logSharedDataMenuItem.setVisible(true);
+                                syncMenuItem.setVisible(true);
+                                loginOrOutMenuItem.setEnabled(true);
+                                initCustomerList();
+                            });
+                        });
                 runOnUiThread(() -> {
                     alert.show();
                 });
