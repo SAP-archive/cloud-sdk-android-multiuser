@@ -72,8 +72,8 @@ import static com.example.android.multiuser.StorageManager.customersListToDispla
 
 public class MainActivity extends AppCompatActivity implements CustomerRecyclerViewAdapter.ItemClickListener {
 
-    private final static String USER_NUMBER = "i500828";
-    private final static String OAUTH_CLIENT_ID = "c1ae10d7-1287-4b08-b00e-5199e6f5a93d";
+    private final static String USER_NUMBER = "p1743065160";
+    private final static String OAUTH_CLIENT_ID = "4649f2d6-7331-4567-9d94-1ca977f301fd";
 
     public final static String OAUTH_REDIRECT_URL = "https://oauthasservices-" + USER_NUMBER + "trial.hanatrial.ondemand.com";
     private final static String AUTH_END_POINT = "https://oauthasservices-" + USER_NUMBER + "trial.hanatrial.ondemand.com/oauth2/api/v1/authorize";
